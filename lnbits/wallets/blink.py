@@ -4,6 +4,7 @@ import json
 from typing import AsyncGenerator, Optional
 
 import httpx
+from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 from loguru import logger
 from pydantic import BaseModel
 from websockets.client import WebSocketClientProtocol, connect
@@ -33,6 +34,9 @@ class BlinkWallet(Wallet):
             raise ValueError("cannot initialize BlinkWallet: missing blink_ws_endpoint")
         if not settings.blink_token:
             raise ValueError("cannot initialize BlinkWallet: missing blink_token")
+        if not settings.blink_currency or settings.blink_currency not in {'BTC', 'USD'}:
+            raise ValueError(
+                "cannot initialize BlinkWallet: missing or invalid blink_currency")
 
         self.endpoint = self.normalize_endpoint(settings.blink_api_endpoint)
 
@@ -83,12 +87,16 @@ class BlinkWallet(Wallet):
                 (
                     wallet["balance"]
                     for wallet in wallets
-                    if wallet["walletCurrency"] == "BTC"
+                    if wallet["walletCurrency"] == settings.blink_currency
                 ),
                 None,
             )
             if btc_balance is None:
                 return StatusResponse("No BTC balance", 0)
+
+            if settings.blink_currency != 'BTC':
+                btc_balance= btc_balance/100
+                btc_balance = await fiat_amount_as_satoshis(amount=float(btc_balance), currency=settings.blink_currency or 'USD')
 
             # multiply balance by 1000 to get msats balance
             return StatusResponse(None, btc_balance * 1000)
@@ -123,14 +131,27 @@ class BlinkWallet(Wallet):
         else:
             invoice_variables["input"]["memo"] = memo or ""
 
-        data = {"query": q.invoice_query, "variables": invoice_variables}
+        mutation = (
+            'lnInvoiceCreateOnBehalfOfRecipient'
+            if settings.blink_currency == 'BTC'
+            else 'lnUsdInvoiceBtcDenominatedCreateOnBehalfOfRecipient'
+        )
+
+        capitalized_mutation = mutation[0].upper() + mutation[1:]
+
+        query = (
+            q.invoice_query.replace('lnInvoiceCreateOnBehalfOfRecipient', mutation)
+                        .replace('LnInvoiceCreateOnBehalfOfRecipient', capitalized_mutation)
+        )
+
+        data = {"query": query, "variables": invoice_variables}
 
         try:
             response = await self._graphql_query(data)
 
             errors = (
                 response.get("data", {})
-                .get("lnInvoiceCreateOnBehalfOfRecipient", {})
+                .get(mutation, {})
                 .get("errors", {})
             )
             if len(errors) > 0:
@@ -139,13 +160,13 @@ class BlinkWallet(Wallet):
 
             payment_request = (
                 response.get("data", {})
-                .get("lnInvoiceCreateOnBehalfOfRecipient", {})
+                .get(mutation, {})
                 .get("invoice", {})
                 .get("paymentRequest", None)
             )
             checking_id = (
                 response.get("data", {})
-                .get("lnInvoiceCreateOnBehalfOfRecipient", {})
+                .get(mutation, {})
                 .get("invoice", {})
                 .get("paymentHash", None)
             )
@@ -344,9 +365,8 @@ class BlinkWallet(Wallet):
                 .get("wallets", [])
             )
             btc_wallet_ids = [
-                wallet["id"] for wallet in wallets if wallet["walletCurrency"] == "BTC"
+                wallet["id"] for wallet in wallets if wallet["walletCurrency"] == settings.blink_currency
             ]
-
             if not btc_wallet_ids:
                 raise ValueError("BTC Wallet not found")
 

@@ -24,6 +24,7 @@ tests/data/*.sqlite3
 *.pyc
 *.env
 .env
+.env.yaml
 .pre-commit-config.yaml
 
 data

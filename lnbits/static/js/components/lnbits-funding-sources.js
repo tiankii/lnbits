@@ -116,7 +116,8 @@ Vue.component('lnbits-funding-sources', {
           {
             blink_api_endpoint: 'Endpoint',
             blink_ws_endpoint: 'WebSocket',
-            blink_token: 'Key'
+            blink_token: 'Key',
+            blink_currency: 'Currency',
           }
         ],
         [

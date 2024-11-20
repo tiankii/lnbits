@@ -222,6 +222,7 @@ class BlinkFundingSource(LNbitsSettings):
     blink_api_endpoint: Optional[str] = Field(default="https://api.blink.sv/graphql")
     blink_ws_endpoint: Optional[str] = Field(default="wss://ws.blink.sv/graphql")
     blink_token: Optional[str] = Field(default=None)
+    blink_currency: Optional[str] = Field(default=None)
 
 
 class ZBDFundingSource(LNbitsSettings):
