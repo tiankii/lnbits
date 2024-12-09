@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, AsyncGenerator, Coroutine, NamedTuple, Optional
 
+import httpx
+
 if TYPE_CHECKING:
     from lnbits.nodes.base import Node
 
@@ -140,9 +142,18 @@ class Wallet(ABC):
             if endpoint.startswith("ws://") or endpoint.startswith("wss://"):
                 return endpoint
             endpoint = (
-                f"https://{endpoint}" if not endpoint.startswith("http") else endpoint
+                f"https://{endpoint}" if not endpoint.startswith(
+                    "http") else endpoint
             )
         return endpoint
+
+    def get_error_message(self, error):
+        error_message = ''
+        if isinstance(error, httpx.HTTPStatusError):
+            error_message = error.response.json()['data'].get('message', '')
+        else:
+            error_message = str(error)
+        return error_message
 
 
 class UnsupportedError(Exception):

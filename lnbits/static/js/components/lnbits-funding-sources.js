@@ -121,6 +121,15 @@ Vue.component('lnbits-funding-sources', {
           }
         ],
         [
+          'StrikeWallet',
+          'Strike',
+          {
+            strike_api_endpoint: 'Endpoint',
+            strike_token: 'Key',
+            strike_currency: 'Currency',
+          }
+        ],
+        [
           'AlbyWallet',
           'Alby',
           {

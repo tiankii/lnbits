@@ -222,7 +222,12 @@ class BlinkFundingSource(LNbitsSettings):
     blink_api_endpoint: Optional[str] = Field(default="https://api.blink.sv/graphql")
     blink_ws_endpoint: Optional[str] = Field(default="wss://ws.blink.sv/graphql")
     blink_token: Optional[str] = Field(default=None)
-    blink_currency: Optional[str] = Field(default=None)
+    blink_currency: Optional[str] = Field(default="BTC")
+
+class StrikeFundingSource(LNbitsSettings):
+    strike_api_endpoint: Optional[str] = Field(default="https://api.strike.me")
+    strike_token: Optional[str] = Field(default=None)
+    strike_currency: Optional[str] = Field(default="BTC")
 
 
 class ZBDFundingSource(LNbitsSettings):
@@ -293,6 +298,7 @@ class FundingSourcesSettings(
     LndGrpcFundingSource,
     LnPayFundingSource,
     BlinkFundingSource,
+    StrikeFundingSource,
     AlbyFundingSource,
     BoltzFundingSource,
     ZBDFundingSource,
@@ -447,6 +453,7 @@ class SuperUserSettings(LNbitsSettings):
             "AlbyWallet",
             "BoltzWallet",
             "BlinkWallet",
+            "StrikeWallet",
             "BreezSdkWallet",
             "CoreLightningRestWallet",
             "CoreLightningWallet",

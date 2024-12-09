@@ -9,6 +9,7 @@ from lnbits.wallets.base import Wallet
 
 from .alby import AlbyWallet
 from .blink import BlinkWallet
+from .strike import StrikeWallet
 from .boltz import BoltzWallet
 from .breez import BreezSdkWallet
 from .cliche import ClicheWallet
@@ -75,4 +76,5 @@ __all__ = [
     "SparkWallet",
     "VoidWallet",
     "ZBDWallet",
+    "StrikeWallet"
 ]

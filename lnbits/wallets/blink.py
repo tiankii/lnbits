@@ -31,9 +31,11 @@ class BlinkWallet(Wallet):
                 "cannot initialize BlinkWallet: missing blink_api_endpoint"
             )
         if not settings.blink_ws_endpoint:
-            raise ValueError("cannot initialize BlinkWallet: missing blink_ws_endpoint")
+            raise ValueError(
+                "cannot initialize BlinkWallet: missing blink_ws_endpoint")
         if not settings.blink_token:
-            raise ValueError("cannot initialize BlinkWallet: missing blink_token")
+            raise ValueError(
+                "cannot initialize BlinkWallet: missing blink_token")
         if not settings.blink_currency or settings.blink_currency not in {'BTC', 'USD'}:
             raise ValueError(
                 "cannot initialize BlinkWallet: missing or invalid blink_currency")
@@ -49,7 +51,8 @@ class BlinkWallet(Wallet):
             "type": "connection_init",
             "payload": {"X-API-KEY": settings.blink_token},
         }
-        self.client = httpx.AsyncClient(base_url=self.endpoint, headers=self.auth)
+        self.client = httpx.AsyncClient(
+            base_url=self.endpoint, headers=self.auth)
         self.ws: Optional[WebSocketClientProtocol] = None
         self._wallet_id = None
 
@@ -95,7 +98,7 @@ class BlinkWallet(Wallet):
                 return StatusResponse("No BTC balance", 0)
 
             if settings.blink_currency != 'BTC':
-                btc_balance= btc_balance/100
+                btc_balance = btc_balance/100
                 btc_balance = await fiat_amount_as_satoshis(amount=float(btc_balance), currency=settings.blink_currency or 'USD')
 
             # multiply balance by 1000 to get msats balance
@@ -140,8 +143,9 @@ class BlinkWallet(Wallet):
         capitalized_mutation = mutation[0].upper() + mutation[1:]
 
         query = (
-            q.invoice_query.replace('lnInvoiceCreateOnBehalfOfRecipient', mutation)
-                        .replace('LnInvoiceCreateOnBehalfOfRecipient', capitalized_mutation)
+            q.invoice_query.replace(
+                'lnInvoiceCreateOnBehalfOfRecipient', mutation)
+            .replace('LnInvoiceCreateOnBehalfOfRecipient', capitalized_mutation)
         )
 
         data = {"query": query, "variables": invoice_variables}
@@ -273,7 +277,8 @@ class BlinkWallet(Wallet):
                 .get("walletById", {})
                 .get("transactionsByPaymentHash", [])
             )
-            tx_data = next((t for t in txs_data if t.get("direction") == "SEND"), None)
+            tx_data = next(
+                (t for t in txs_data if t.get("direction") == "SEND"), None)
             assert tx_data, "No SEND data found."
             fee = tx_data.get("settlementFee")
             preimage = tx_data.get("settlementVia", {}).get("preImage")
@@ -291,7 +296,8 @@ class BlinkWallet(Wallet):
         while settings.lnbits_running:
             try:
                 async with connect(
-                    self.ws_endpoint, subprotocols=[Subprotocol("graphql-transport-ws")]
+                    self.ws_endpoint, subprotocols=[
+                        Subprotocol("graphql-transport-ws")]
                 ) as ws:
                     logger.info("Connected to blink invoices stream.")
                     self.ws = ws
@@ -328,7 +334,8 @@ class BlinkWallet(Wallet):
                         if not tx.get("initiationVia"):
                             continue
 
-                        payment_hash = tx.get("initiationVia").get("paymentHash")
+                        payment_hash = tx.get(
+                            "initiationVia").get("paymentHash")
                         if payment_hash:
                             yield payment_hash
 
@@ -374,7 +381,8 @@ class BlinkWallet(Wallet):
             return self._wallet_id
         except Exception as exc:
             logger.warning(exc)
-            raise ValueError(f"Unable to connect to '{self.endpoint}'") from exc
+            raise ValueError(
+                f"Unable to connect to '{self.endpoint}'") from exc
 
 
 class BlinkGrafqlQueries(BaseModel):
