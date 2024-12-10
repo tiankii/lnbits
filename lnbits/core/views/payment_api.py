@@ -30,6 +30,7 @@ from lnbits.core.models import (
     Payment,
     PaymentFilters,
     PaymentHistoryPoint,
+    PaymentState,
     Wallet,
 )
 from lnbits.db import Filters, Page
@@ -42,7 +43,7 @@ from lnbits.decorators import (
 )
 from lnbits.helpers import filter_dict_keys, generate_filter_params_openapi
 from lnbits.lnurl import decode as lnurl_decode
-from lnbits.settings import settings
+from lnbits.settings import get_funding_source, settings
 from lnbits.utils.exchange_rates import fiat_amount_as_satoshis
 
 from ..crud import (
@@ -52,6 +53,7 @@ from ..crud import (
     get_payments_paginated,
     get_standalone_payment,
     get_wallet_for_key,
+    update_payment_status,
 )
 from ..services import (
     create_invoice,
@@ -397,31 +399,40 @@ async def api_payment(payment_hash, x_api_key: Optional[str] = Header(None)):
     payment = await get_standalone_payment(
         payment_hash, wallet_id=wallet.id if wallet else None
     )
+
     if payment is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="Payment does not exist."
         )
 
-    if payment.success:
-        if wallet and wallet.id == payment.wallet_id:
-            return {"paid": True, "preimage": payment.preimage, "details": payment}
-        return {"paid": True, "preimage": payment.preimage}
+    authenticatedRequest = wallet and wallet.id == payment.wallet_id
+    response: dict = {"paid": payment.success, "preimage": payment.preimage}
+    if authenticatedRequest:
+        response['details'] = payment
 
+    if payment.success or payment.failed or not authenticatedRequest:
+        return response
+
+    # check if invoice is success
     try:
         status = await payment.check_status()
-    except Exception:
-        if wallet and wallet.id == payment.wallet_id:
-            return {"paid": False, "details": payment}
-        return {"paid": False}
 
-    if wallet and wallet.id == payment.wallet_id:
+        # this line could cause problems
+        if (status.success):
+            funding_source = get_funding_source()
+            if (funding_source.__class__.__name__ == 'StrikeWallet'):
+                logger.success(f"invoice {payment.checking_id} settled")
+                await update_payment_status(
+                    checking_id=payment.checking_id,
+                    status=PaymentState.SUCCESS,
+                )
         return {
-            "paid": payment.success,
-            "status": f"{status!s}",
-            "preimage": payment.preimage,
-            "details": payment,
+            **response,
+            "paid": status.success,
         }
-    return {"paid": payment.success, "preimage": payment.preimage}
+
+    except Exception:
+        return {"paid": False}
 
 
 @payment_router.post("/decode", status_code=HTTPStatus.OK)
